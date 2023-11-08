@@ -51,18 +51,20 @@ ggplot(diamonds, aes(x = depth_mm, y = depth_pct)) + geom_point()
 diamonds <- diamonds %>%
   mutate(table_mm = table_pct * width_mm / 100)
 
+# Calculate the table width in millimetres
+diamonds <- diamonds %>%
+  mutate(table_mm = table_pct * width_mm / 100)
 
-# Overall table_mm arithmetic mean?
-mean <- function(x){
-  count <- 0
-  total <- total + x
-  count <- count + 1 
-  return(total/count)
-}
-mean(diamonds$table_mm)
+# Calculate the arithmetic mean of the table lengths for all diamonds
+overall_mean <- mean(diamonds$table_mm)
+
+# Calculate the arithmetic mean of the table lengths within each clarity category
+clarity_means <- diamonds %>%
+  group_by(clarity) %>%
+  summarise(mean_table_mm = mean(table_mm, na.rm = TRUE))
 
 
-# table_mm arithmetic mean within each clarity category
+clarity_means
 
 
 
@@ -74,22 +76,48 @@ _Add your comment here_
 
 _Do derivation on paper, unless you know how to write LaTeX code_
 
+Given the geometric mean formula:
+
+\[\bar{x}_g = \sqrt[n]{\prod_{i=1}^{n} x_i}\]
+
+We want to show that this is equal to:
+
+\[\bar{x}_g = \exp\left(\frac{1}{n} \sum_{i=1}^{n} \ln x_i\right)\]
+
+Starting with the right-hand side:
+
+\begin{align*}
+\exp\left(\frac{1}{n} \sum_{i=1}^{n} \ln x_i\right) &= \exp\left(\ln x_1^{1/n} + \ln x_2^{1/n} + \ldots + \ln x_n^{1/n}\right) \\
+&= \exp\left(\ln \left(x_1^{1/n} x_2^{1/n} \ldots x_n^{1/n}\right)\right) \\
+&= \exp\left(\ln \left(\sqrt[n]{x_1} \sqrt[n]{x_2} \ldots \sqrt[n]{x_n}\right)\right) \\
+&= \exp\left(\ln \left(\sqrt[n]{x_1 x_2 \ldots x_n}\right)\right) \\
+&= \sqrt[n]{x_1 x_2 \ldots x_n} \\
+&= \bar{x}_g
+\end{align*}
+
 
 ## Exercise 4
 
 ```{r}
 # Write gmean() command
 
-gmean <- function(x){
-  n = 0
-  sum = 0
-  n = n + 1
-  sum = log(x) + sum 
-  gmean = exp(1/n * sum)
-  return(gmean)
+
+gmean <- function(x) {
+  # Ensure that x is a numeric vector
+  if (!is.numeric(x)) {
+    warning("Input must be a numeric vector.")
+    return("NaN")
+  }
+  
+  # Calculate the geometric mean
+  n <- length(x)
+  gm <- exp(sum(log(x)) / n)
+  
+  return(gm)
 }
 
-gmean(diamonds$table_mm)
+
+
 
 
 ```
@@ -110,6 +138,10 @@ test_data <- list(
 
 # Create for loop to test gmean() on the above examples
 
+for (i in seq_along(test_data)) {
+  cat("gmean of test", i, ": ")
+  print(gmean(test_data[[i]]))
+}
 
 ```
 
@@ -121,11 +153,33 @@ test_data <- list(
 
 
 
+gmean <- function(x) {
+  # Ensure that x is a numeric vector
+  if (!is.numeric(x)) {
+    warning("Input must be a numeric vector.")
+    return(NaN)
+  }
+  
+  # Ensure that all elements of x are positive
+  if (any(x <= 0)) {
+    warning("All elements of input must be positive to compute geometric mean.")
+    return(NaN)
+  }
+  
+  # Calculate the geometric mean
+  n <- length(x)
+  gm <- exp(sum(log(x)) / n)
+  
+  return(gm)
+}
 
 
 # Copy your code from Ex 5 to test your new command
 
-
+for (i in seq_along(test_data)) {
+  cat("gmean of test", i, ": ")
+  print(gmean(test_data[[i]]))
+}
 
 
 
@@ -137,8 +191,15 @@ test_data <- list(
 ```{r}
 # Overall table_mm geometic mean?
 
+summary_stats <- diamonds %>%
+  group_by(clarity) %>%
+  summarize(
+    mean_table_mm = mean(table_mm, na.rm = TRUE),
+    median_table_mm = median(table_mm, na.rm = TRUE),
+    geom_mean_table_mm = gmean(table_mm) # This uses the gmean function we defined earlier
+  )
 
-
+summary_stats
 
 
 
@@ -160,7 +221,36 @@ _Add your comment here_
 # Create gmean2() that computes the geometric mean 
 #   that uses the original definition
 
+gmean2 <- function(x) {
+  
+  if (!is.numeric(x)) {
+    if (all(sapply(x, is.character))) {
+      x <- as.numeric(x)  # attempt to convert characters to numeric
+    }
+  }
+  
+  # Check for non-numeric values
+  
+    if (any(is.na(x))) {
+      stop("Input must be a numeric vector.")
+    }
+  
+  
+  # Check for non-positive values
+  if (any(x <= 0, na.rm = TRUE)) {
+    warning("Values must be strictly positive for geometric mean calculation.")
+    return(NaN)
+  }
+  
+  # Calculate the geometric mean
+  exp(mean(log(x), na.rm = TRUE))
+}
 
+# Apply the gmean2 function on the test data
+for (i in seq_along(test_data)) {
+  cat("gmean2 of test", i, ": ")
+  print(gmean2(test_data[[i]]))
+}
 
 
 
@@ -174,9 +264,24 @@ _Add your comment here_
 # Create a function that computes the harmonic mean
 
 
+hmean <- function(x) {
+  if (any(x <= 0, na.rm = TRUE)) {
+    warning("All values must be positive for harmonic mean calculation.")
+    return(NaN)
+  }
+  if (!is.numeric(x)) {
+    warning("Input must be a numeric vector.")
+    return(NaN)
+  }
+  n <- sum(!is.na(x)) # Count of non-NA values
+  hm <- n / sum(1 / x, na.rm = TRUE)
+  return(hm)
+}
 
 
-
+for (i in 1:length(test_data)) {
+  cat("Harmonic mean of test", i, ":", hmean(test_data[[i]]), "\n")
+}
 
 
 ```
